@@ -3,16 +3,24 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-const PORT = 3000;
+// Render akan otomatis ngisi PORT, kalau di laptop pakai 3000
+const PORT = process.env.PORT || 3000;
 
-// --- CONFIG SUPABASE (SAMA SEPERTI SEBELUMNYA) ---
-const SUPABASE_URL = 'https://ukczpgjppfhnuaedgtee.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrY3pwZ2pwcGZobnVhZWRndGVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3Nzk5NTcsImV4cCI6MjA4NTM1NTk1N30._GmDrqRHxA7kffWyFHZpOlS8ecWV53EuUnKOGp1I6yM';
+// --- AMBIL DARI ENVIRONMENT VARIABLE (BRANKAS RENDER) ---
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+// Cek error kalau lupa setting di Render
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error("❌ Error: SUPABASE_URL atau SUPABASE_KEY belum di-set di Render!");
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(cors());
 app.use(express.json());
+
+// ... (SISA KODINGAN KE BAWAH SAMA SAJA) ...
 
 // 1. LOGIN
 app.post('/api/auth/login', async (req, res) => {
