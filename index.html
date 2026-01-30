@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuspunk Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        :root { --neon-blue: #00f2ff; --bg-gradient: linear-gradient(to right, #24243e, #302b63, #0f0c29); }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg-gradient); min-height: 100vh; color: white; overflow-x: hidden; }
+        
+        /* Glassmorphism */
+        .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; }
+        .navbar { background: rgba(15, 12, 41, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Card Buku */
+        .card-buku { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; transition: 0.4s; overflow: hidden; }
+        .card-buku:hover { transform: translateY(-7px); border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 242, 255, 0.3); }
+        .card-img-top { height: 240px; object-fit: cover; }
+        .badge-stok { position: absolute; top: 10px; left: 10px; font-weight: bold; padding: 5px 12px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        
+        /* Sidebar & Search */
+        .list-group-item { background: transparent; color: #ccc; border: none; transition: 0.2s; }
+        .list-group-item:hover { color: white; padding-left: 20px; }
+        .list-group-item.active { background: rgba(0, 242, 255, 0.1); color: var(--neon-blue); font-weight: bold; border-left: 3px solid var(--neon-blue); }
+        
+        .search-input { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); color: white; transition: 0.3s; }
+        .search-input:focus { background: rgba(0, 0, 0, 0.5); border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 242, 255, 0.3); color: white; }
+        
+        .hidden { display: none !important; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e2f; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#" onclick="showKatalog()" style="letter-spacing: 1px;">
+                <i class="fas fa-infinity me-2" style="color:var(--neon-blue)"></i> NUSPUNK LIB
+            </a>
+            
+            <div class="d-flex align-items-center">
+                <div id="nav-guest" class="text-center" style="cursor: pointer; transition:0.3s;" onclick="showLoginModal()">
+                    <div class="d-flex align-items-center gap-2 border border-secondary px-3 py-1 rounded-pill hover-neon">
+                        <i class="fas fa-user-circle fa-lg" style="color: #ccc;"></i>
+                        <span style="font-size: 0.85rem; color: var(--neon-blue); font-weight: bold;">Login</span>
+                    </div>
+                </div>
+
+                <div id="nav-user" class="hidden d-flex align-items-center gap-3 animate__animated animate__fadeIn">
+                    <div class="text-end lh-1 d-none d-md-block">
+                        <span class="badge bg-secondary border border-secondary text-uppercase" style="font-size: 0.6rem; letter-spacing: 1px;" id="user-role-label">Role</span>
+                        <div class="fw-bold text-white mt-1" id="user-name-label">Nama User</div>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name=User&background=00f2ff&color=000" class="rounded-circle border border-2 border-info" width="40">
+
+                    <button id="btn-dashboard" class="hidden btn btn-sm fw-bold px-3 py-2 rounded-pill" onclick="loadDashboard()" style="background: #ffc107; color: #000; border: none; transition: 0.3s;">
+                        <i class="fas fa-tachometer-alt me-2"></i> DASHBOARD ADMIN
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-danger px-3 py-2 rounded-pill" onclick="logout()" title="Keluar">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 mb-5">
+        
+        <div id="page-katalog" class="row">
+            <div class="col-lg-3 col-md-4 mb-4">
+                <div class="glass-panel p-4 sticky-top" style="top: 100px; z-index: 1;">
+                    <h6 class="fw-bold text-white text-uppercase mb-3" style="letter-spacing: 1px;">Kategori Buku</h6>
+                    <div class="list-group">
+                        <button class="list-group-item list-group-item-action active" onclick="filterBuku('Semua', this)"><i class="fas fa-layer-group me-2"></i> Semua Koleksi</button>
+                        <button class="list-group-item list-group-item-action" onclick="filterBuku('Teknik', this)"><i class="fas fa-laptop-code me-2"></i> Teknik & IT</button>
+                        <button class="list-group-item list-group-item-action" onclick="filterBuku('Ekonomi', this)"><i class="fas fa-chart-line me-2"></i> Ekonomi</button>
+                        <button class="list-group-item list-group-item-action" onclick="filterBuku('Hukum', this)"><i class="fas fa-balance-scale me-2"></i> Hukum</button>
+                        <button class="list-group-item list-group-item-action" onclick="filterBuku('Sastra', this)"><i class="fas fa-feather-alt me-2"></i> Sastra</button>
+                    </div>
+                    
+                    <hr class="border-secondary my-4">
+                    
+                    <label class="text-white small mb-2 fw-bold"><i class="fas fa-search me-1 text-info"></i> Pencarian Buku</label>
+                    <div class="position-relative">
+                        <i class="fas fa-search position-absolute" style="top: 13px; left: 15px; color: var(--neon-blue);"></i>
+                        <input type="text" class="form-control search-input ps-5 rounded-pill py-2" id="searchBox" placeholder="Cari judul buku..." onkeyup="cariBuku()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9 col-md-8">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold m-0"><span style="color:var(--neon-blue)">#</span> Trending Now</h2>
+                    <span class="badge bg-dark border border-secondary text-white rounded-pill px-3 py-2" id="total-buku">Loading...</span>
+                </div>
+                
+                <div class="row g-4" id="daftar-buku">
+                    </div>
+            </div>
+        </div>
+
+        <div id="page-dashboard" class="hidden animate__animated animate__fadeIn">
+            <button class="btn btn-outline-light mb-4 rounded-pill px-4" onclick="showKatalog()">
+                <i class="fas fa-arrow-left me-2"></i> Kembali ke Katalog
+            </button>
+            <div class="glass-panel p-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold text-white mb-1">Dashboard Monitoring</h2>
+                        <p class="text-muted">Pantau data peminjaman buku secara realtime.</p>
+                    </div>
+                    <i class="fas fa-user-shield fa-3x text-warning opacity-50"></i>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle" style="background: transparent;">
+                        <thead>
+                            <tr style="color: var(--neon-blue); border-bottom: 2px solid rgba(255,255,255,0.1);">
+                                <th class="py-3">PEMINJAM</th>
+                                <th class="py-3">JUDUL BUKU</th>
+                                <th class="py-3">TGL PINJAM</th>
+                                <th class="py-3">JATUH TEMPO</th>
+                                <th class="py-3 text-center">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabel-admin" style="font-size: 0.95rem;"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="fab-tambah" class="hidden position-fixed bottom-0 end-0 p-4 animate__animated animate__bounceIn" style="z-index: 100;">
+        <button class="btn btn-warning rounded-circle shadow-lg d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;" onclick="bukaModalTambah()" title="Tambah Buku Baru">
+            <i class="fas fa-plus fa-lg text-dark"></i>
+        </button>
+    </div>
+
+    <div class="modal fade" id="modalBuku" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="background: #1e1e2f; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-white fw-bold" id="modalTitle">Tambah Buku</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="buku-id">
+                    <div class="mb-3">
+                        <label class="text-secondary small">Judul Buku</label>
+                        <input type="text" id="input-judul" class="form-control bg-dark text-white border-secondary">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="text-secondary small">Penulis</label>
+                            <input type="text" id="input-penulis" class="form-control bg-dark text-white border-secondary">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="text-secondary small">Stok</label>
+                            <input type="number" id="input-stok" class="form-control bg-dark text-white border-secondary">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-secondary small">Kategori</label>
+                        <select id="input-kategori" class="form-select bg-dark text-white border-secondary">
+                            <option value="Teknik">Teknik</option>
+                            <option value="Ekonomi">Ekonomi</option>
+                            <option value="Hukum">Hukum</option>
+                            <option value="Sastra">Sastra</option>
+                            <option value="Umum">Umum</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="text-secondary small">URL Cover Gambar</label>
+                        <input type="text" id="input-cover" class="form-control bg-dark text-white border-secondary" placeholder="https://...">
+                    </div>
+                    <button onclick="simpanBuku()" class="btn btn-info w-100 fw-bold" style="background: var(--neon-blue); border:none; color:black;">SIMPAN DATA</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalLogin" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg" style="background: #1e1e2f; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                <div class="modal-header border-0 justify-content-center pb-0">
+                    <h5 class="modal-title fw-bold text-white"><i class="fas fa-lock me-2 text-warning"></i>Login Area</h5>
+                </div>
+                <div class="modal-body p-4">
+                    <form onsubmit="handleLogin(event)">
+                        <div class="mb-3 text-start">
+                            <label class="form-label text-light small mb-1">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fas fa-user"></i></span>
+                                <input type="text" id="login-username" class="form-control bg-dark text-white border-secondary" placeholder="Ketik username...">
+                            </div>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label text-light small mb-1">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fas fa-key"></i></span>
+                                <input type="password" id="login-password" class="form-control bg-dark text-white border-secondary" placeholder="Ketik password...">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn w-100 fw-bold shadow" style="background: var(--neon-blue); color: #000; border-radius: 8px; padding: 10px;">MASUK SEKARANG</button>
+                    </form>
+                    <div class="position-relative my-4">
+                        <hr class="border-secondary">
+                        <span class="position-absolute top-50 start-50 translate-middle px-2 text-white small" style="background: #1e1e2f; white-space: nowrap;">Malas ngetik? Klik Demo:</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-danger btn-sm w-50" onclick="autoFill('admin')"><i class="fas fa-user-secret me-1"></i> Admin</button>
+                        <button class="btn btn-outline-success btn-sm w-50" onclick="autoFill('budi')"><i class="fas fa-user me-1"></i> Member</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        let allBooks = [];
+        let currentUser = null; 
+
+        // --- 1. STARTUP ---
+        function checkSession() {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                updateUI(true);
+            } else {
+                updateUI(false);
+            }
+            fetchBooks();
+        }
+
+        function updateUI(isLoggedIn) {
+            if (isLoggedIn) {
+                document.getElementById('nav-guest').classList.add('hidden');
+                document.getElementById('nav-user').classList.remove('hidden');
+                document.getElementById('user-name-label').innerText = currentUser.name;
+                document.getElementById('user-role-label').innerText = currentUser.role;
+                
+                if(currentUser.role === 'admin') {
+                    document.getElementById('btn-dashboard').classList.remove('hidden');
+                    document.getElementById('fab-tambah').classList.remove('hidden');
+                } else {
+                    document.getElementById('fab-tambah').classList.add('hidden');
+                }
+            } else {
+                document.getElementById('nav-guest').classList.remove('hidden');
+                document.getElementById('nav-user').classList.add('hidden');
+                document.getElementById('btn-dashboard').classList.add('hidden');
+                document.getElementById('fab-tambah').classList.add('hidden');
+            }
+        }
+
+        // --- 2. FETCH DATA ---
+        async function fetchBooks() {
+            try {
+                const res = await fetch(API_URL + '/buku');
+                allBooks = await res.json();
+                renderBooks(allBooks);
+            } catch (err) {
+                document.getElementById('daftar-buku').innerHTML = `<div class="text-center text-danger mt-5">Gagal koneksi ke server. Pastikan 'node server.js' sudah jalan!</div>`;
+            }
+        }
+
+        // --- 3. RENDER BOOKS (DENGAN ESTIMASI KEMBALI) ---
+        function renderBooks(data) {
+            const container = document.getElementById('daftar-buku');
+            document.getElementById('total-buku').innerText = `${data.length} Buku`;
+            container.innerHTML = '';
+
+            data.forEach((buku, index) => {
+                let btnAction = '';
+
+                if (!currentUser) {
+                    btnAction = `<button class="btn btn-outline-light btn-sm w-100 rounded-pill" onclick="showLoginModal()">Login untuk Pinjam</button>`;
+                } else if (currentUser.role === 'admin') {
+                    btnAction = `
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm w-50 fw-bold rounded-pill btn-outline-warning" onclick="bukaModalEdit(${buku.id})"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn btn-sm w-50 fw-bold rounded-pill btn-outline-danger" onclick="hapusBuku(${buku.id})"><i class="fas fa-trash-alt"></i> Hapus</button>
+                    </div>`;
+                } else {
+                    // LOGIKA TOMBOL MEMBER
+                    if (buku.stok > 0) {
+                        btnAction = `<button class="btn btn-sm w-100 fw-bold rounded-pill shadow-sm" style="background:var(--neon-blue); color:black; border:none;" onclick="pinjamBuku(${buku.id})">
+                                        <i class="fas fa-book-reader me-1"></i> Pinjam Buku
+                                     </button>`;
+                    } else {
+                        // TAMPILKAN ESTIMASI KEMBALI
+                        let teksHabis = buku.estimasi ? `Tersedia: ${buku.estimasi}` : 'Stok Habis';
+                        btnAction = `<button class="btn btn-secondary btn-sm w-100 rounded-pill fw-bold" disabled style="opacity:0.8; background:#444; border:1px solid #666;">
+                                        <i class="fas fa-clock me-1"></i> ${teksHabis}
+                                     </button>`;
+                    }
+                }
+
+                const html = `
+                <div class="col-lg-4 col-md-6 animate__animated animate__fadeInUp" style="animation-delay: ${index * 50}ms">
+                    <div class="card card-buku h-100">
+                        <div style="position:relative;">
+                            <img src="${buku.cover}" class="card-img-top" alt="Cover">
+                            <span class="badge-stok" style="background: ${buku.stok > 0 ? 'var(--neon-blue)' : '#ff5252'}; color: ${buku.stok > 0 ? 'black' : 'white'}">
+                                Sisa: ${buku.stok}
+                            </span>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h6 class="card-title fw-bold text-white mb-1 text-truncate">${buku.judul}</h6>
+                            <p class="small text-muted mb-3">${buku.penulis}</p>
+                            <div class="mt-auto">
+                                <span class="badge bg-dark border border-secondary mb-3">${buku.kategori}</span>
+                                ${btnAction}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // --- 4. CRUD ---
+        function bukaModalTambah() {
+            document.getElementById('modalTitle').innerText = "Tambah Buku Baru";
+            document.getElementById('buku-id').value = ""; 
+            document.getElementById('input-judul').value = "";
+            document.getElementById('input-penulis').value = "";
+            document.getElementById('input-stok').value = "";
+            document.getElementById('input-cover').value = "";
+            new bootstrap.Modal(document.getElementById('modalBuku')).show();
+        }
+
+        function bukaModalEdit(id) {
+            const buku = allBooks.find(b => b.id === id);
+            document.getElementById('modalTitle').innerText = "Edit Buku";
+            document.getElementById('buku-id').value = buku.id;
+            document.getElementById('input-judul').value = buku.judul;
+            document.getElementById('input-penulis').value = buku.penulis;
+            document.getElementById('input-stok').value = buku.stok;
+            document.getElementById('input-kategori').value = buku.kategori;
+            document.getElementById('input-cover').value = buku.cover;
+            new bootstrap.Modal(document.getElementById('modalBuku')).show();
+        }
+
+        async function simpanBuku() {
+            const id = document.getElementById('buku-id').value;
+            const dataBuku = {
+                judul: document.getElementById('input-judul').value,
+                penulis: document.getElementById('input-penulis').value,
+                stok: document.getElementById('input-stok').value,
+                kategori: document.getElementById('input-kategori').value,
+                cover: document.getElementById('input-cover').value || 'https://placehold.co/400'
+            };
+
+            let url = API_URL + '/buku';
+            let method = 'POST';
+            if (id) { url = API_URL + '/buku/' + id; method = 'PUT'; }
+
+            try {
+                const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataBuku) });
+                if (res.ok) {
+                    Swal.fire('Sukses', 'Data tersimpan!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('modalBuku')).hide();
+                    fetchBooks();
+                } else { Swal.fire('Gagal', 'Error menyimpan data', 'error'); }
+            } catch (err) { Swal.fire('Error', 'Server error', 'error'); }
+        }
+
+        async function hapusBuku(id) {
+            const result = await Swal.fire({ title: 'Hapus Buku?', text: "Permanen!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Hapus' });
+            if (result.isConfirmed) {
+                await fetch(`${API_URL}/buku/${id}`, { method: 'DELETE' });
+                Swal.fire('Terhapus!', '', 'success');
+                fetchBooks();
+            }
+        }
+
+        // --- 5. LOGIC SYSTEM ---
+        function showLoginModal() { new bootstrap.Modal(document.getElementById('modalLogin')).show(); }
+        function autoFill(role) {
+            const u = document.getElementById('login-username'); const p = document.getElementById('login-password');
+            if(role === 'admin') { u.value = 'admin'; p.value = '123'; } else { u.value = 'budi'; p.value = '123'; }
+        }
+        async function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('login-username').value; const p = document.getElementById('login-password').value;
+            try {
+                const res = await fetch(API_URL + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    bootstrap.Modal.getInstance(document.getElementById('modalLogin')).hide();
+                    Swal.fire({ icon: 'success', title: `Welcome ${data.user.name}`, timer: 1500, showConfirmButton: false });
+                    setTimeout(() => location.reload(), 1500);
+                } else { Swal.fire('Gagal', data.pesan, 'error'); }
+            } catch (err) { Swal.fire('Error', 'Server error', 'error'); }
+        }
+        function logout() { localStorage.clear(); location.reload(); }
+
+        async function pinjamBuku(id) {
+            const result = await Swal.fire({ title: 'Pinjam Buku?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya' });
+            if (result.isConfirmed) {
+                const res = await fetch(API_URL + '/pinjam', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bukuId: id, namaPeminjam: currentUser.name }) });
+                const data = await res.json();
+                if(res.ok) { Swal.fire('Berhasil', `Kembalikan sblm: ${data.tenggat}`, 'success'); fetchBooks(); }
+                else { Swal.fire('Gagal', data.pesan, 'error'); }
+            }
+        }
+
+        async function loadDashboard() {
+            document.getElementById('page-katalog').classList.add('hidden');
+            document.getElementById('page-dashboard').classList.remove('hidden');
+            const tbody = document.getElementById('tabel-admin');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
+            const res = await fetch(API_URL + '/admin/transaksi');
+            const data = await res.json();
+            tbody.innerHTML = '';
+            if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Data kosong.</td></tr>'; return; }
+            const hariIni = new Date();
+            data.forEach(tr => {
+                const jatuhTempo = new Date(tr.tgl_jatuh_tempo);
+                const isTelat = hariIni > jatuhTempo;
+                const statusBadge = isTelat ? '<span class="badge bg-danger">TELAT</span>' : '<span class="badge bg-success">AMAN</span>';
+                tbody.innerHTML += `<tr><td>${tr.peminjam}</td><td>${tr.buku_judul}</td><td>${new Date(tr.tgl_pinjam).toLocaleDateString()}</td><td style="${isTelat?'color:#ff5252':''}">${jatuhTempo.toLocaleDateString()}</td><td class="text-center">${statusBadge}</td></tr>`;
+            });
+        }
+
+        function showKatalog() {
+            document.getElementById('page-dashboard').classList.add('hidden');
+            document.getElementById('page-katalog').classList.remove('hidden');
+        }
+
+        function filterBuku(kategori, btn) {
+            document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            if(kategori === 'Semua') renderBooks(allBooks);
+            else renderBooks(allBooks.filter(b => b.kategori === kategori));
+        }
+
+        function cariBuku() {
+            const k = document.getElementById('searchBox').value.toLowerCase();
+            renderBooks(allBooks.filter(b => b.judul.toLowerCase().includes(k)));
+        }
+
+        checkSession();
+    </script>
+</body>
+</html>
